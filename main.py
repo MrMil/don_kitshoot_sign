@@ -34,28 +34,39 @@ def generate_random_rgb_color(existing_colors=None):
 
 
 def get_distinct_colors(num_colors):
-    colors_left = set(CURATED_COLORS)
+    colors_left = set({})
     result = []
     while len(result) < num_colors:
+        if len(colors_left) == 0:
+            colors_left = set(CURATED_COLORS)
+
         result.append(random.choice(list(colors_left)))
         colors_left.remove(result[-1])
-
-    while len(result) < num_colors:
-        result.append(random.choice(CURATED_COLORS))
 
     return result
 
 
-# The shape is
+# The shape of the physical led strips:
+# Top:
+#  Horizontal, on top
+#  Left, right: Vertical, on the sides, each split up into two halves, and they meet at the bottom.
+# So, they form a triangle together.
+# The triangle is split into 4 quaters
 #
-# [top            letters] # I call this "top"
-# [L]                 [R]
-# [L]  (top left)     [R]  (top right)
-# [L]                 [R]
+# Drawing:
 #
-# [L]  (bottom left)  [R]  (bottom right)
-# [L]                 [R]
-# [L]                 [R]
+# [top top top top top top]
+# ------------------------
+# [L]        |        [R]
+#  [L]       |       [R]
+#   [L]      |      [R]
+# ------------------------
+#    [L]     |    [R]
+#     [L]    |   [R]
+#      [L]   |  [R]
+#       [L]  | [R]
+#        [L] |[R]
+#         [L]|[R]
 
 # We'll use a tuple to represent the state of all strands.
 StrandsStates = namedtuple(
