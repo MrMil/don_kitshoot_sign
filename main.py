@@ -32,9 +32,11 @@ def generate_random_rgb_color(existing_colors=None):
 
 
 def get_distinct_colors(num_colors):
-    colors = list(CURATED_COLORS)
-    random.shuffle(colors)
-    result = colors[: min(num_colors, len(colors))]
+    colors_left = set(CURATED_COLORS)
+    result = []
+    while len(result) < num_colors:
+        result.append(random.choice(list(colors_left)))
+        colors_left.remove(result[-1])
 
     while len(result) < num_colors:
         result.append(random.choice(CURATED_COLORS))
@@ -59,9 +61,6 @@ def get_distinct_colors(num_colors):
 
 
 def rotate(strand_state, step):
-    """
-    returns a strand where colors moved by step
-    """
     new_strand_state = [None] * len(strand_state)
     for i in range(len(strand_state)):
         new_strand_state[i] = strand_state[i - step]
@@ -69,16 +68,10 @@ def rotate(strand_state, step):
 
 
 def get_random_strand_state(strand_length):
-    """
-    returns a strand where colors are random using the new generation logic
-    """
     return [generate_random_rgb_color() for _ in range(strand_length)]
 
 
 def apply_state(strand, strand_state):
-    """
-    applies a strand state to a strand
-    """
     for i in range(len(strand)):
         strand[i] = strand_state[i]
     strand.write()
@@ -144,16 +137,10 @@ def apply_state_to_strands(
 
 
 def get_strand_state_in_color(strand_state_length, color):
-    """
-    returns a state where all colors are replaced with the given color
-    """
     return [color for _ in range(strand_state_length)]
 
 
 def add_noise(strand_state, noise_chance_per_led, change_per_rgb):
-    """
-    adds noise to a strand state
-    """
     for i in range(len(strand_state)):
         if random.random() < noise_chance_per_led:
             strand_state[i] = (
@@ -216,36 +203,40 @@ class Animation:
 
     def get_initial_states(self):
         """
-        Returns (strand_states_tuple, current_step, total_steps)
+        Child class should implement this to return the initial StrandsStatesTuple.
         """
-        return (None, 0, self.total_steps)
+        # Child needs to implement this
+        pass
 
     def make_step(self, strand_states):
         """
-        Converts StrandsStatesTuple into a new (StrandsStatesTuple, current_step, total_steps)
+        Advances the animation by one step.
+        Returns the new StrandsStatesTuple.
         """
         self.steps_already_made += 1
-        return (None, self.steps_already_made, self.total_steps)
+        return self._child_make_step(strand_states)
+
+    def _child_make_step(self, strand_states):
+        """
+        Child class should implement this to calculate and return the next StrandsStatesTuple.
+        """
+        # Child needs to implement this
+        pass
 
 
 class WalkingNoiseAnimation(Animation):
-    def __init__(self):
-        super().__init__(0)  # No total steps for this animation
+    def __init__(self, total_steps):
+        super().__init__(total_steps)
 
     def get_initial_states(self):
-        return (get_noise_animation_initial_states(), 0, self.total_steps)
+        return get_noise_animation_initial_states()
 
-    def make_step(self, strand_states):
-        return (
-            get_noise_animation_step(strand_states),
-            self.steps_already_made,
-            self.total_steps,
-        )
+    def _child_make_step(self, strand_states):
+        return get_noise_animation_step(strand_states)
 
 
 class WaveAnimation(Animation):
-    def __init__(self):
-        total_steps = LEN_SIDE_TOP + LEN_SIDE_BOTTOM  # One full wave cycle
+    def __init__(self, total_steps):
         super().__init__(total_steps)
         colors = get_distinct_colors(3)
         self.wave_color = colors[0]
@@ -277,18 +268,14 @@ class WaveAnimation(Animation):
             # N.B. Wave won't reach bottom_side initially if wave_width <= LEN_SIDE_TOP
 
         return (
-            (
-                top_state,
-                top_left_state,
-                top_right_state,
-                bottom_left_state,
-                bottom_right_state,
-            ),
-            self.wave_position,
-            self.total_steps,
+            top_state,
+            top_left_state,
+            top_right_state,
+            bottom_left_state,
+            bottom_right_state,
         )
 
-    def make_step(self, strand_states):
+    def _child_make_step(self, strand_states):
         self.wave_position += 1
 
         total_len_sides_vertical = LEN_SIDE_TOP + LEN_SIDE_BOTTOM
@@ -337,35 +324,27 @@ class WaveAnimation(Animation):
                     new_bottom_right_state[actual_pos_in_bottom_side] = self.wave_color
 
         return (
-            (
-                new_top_state,
-                new_top_left_state,
-                new_top_right_state,
-                new_bottom_left_state,
-                new_bottom_right_state,
-            ),
-            self.wave_position,
-            self.total_steps,
+            new_top_state,
+            new_top_left_state,
+            new_top_right_state,
+            new_bottom_left_state,
+            new_bottom_right_state,
         )
 
 
 class TopScrollAndQuartersAnimation(Animation):
-    def __init__(self):
+    def __init__(self, total_steps):
+        super().__init__(total_steps)
+
         self.block_size_top_scroll = 5
-        # Add extra length for seamless looping of the scroll
-        # Content needs to be long enough for left-to-right scroll where a piece disappears on left and new appears on right
-        # So, if LEN_TOP is visible, and we shift, we need content of at least LEN_TOP + block_size_top_scroll for one new block to come in.
-        # To make it loop smoothly, content should be ~2*LEN_TOP or some multiple of block_size that covers scrolling range.
-        # Let's try (LEN_TOP rounded up to nearest block_size_multiple) + LEN_TOP for buffer.
-        buffer_len_for_scroll = (
+        self.buffer_len_for_scroll = (
             (LEN_TOP + self.block_size_top_scroll - 1) // self.block_size_top_scroll
         ) * self.block_size_top_scroll
+
         self.top_scroll_content = get_block_pattern_strand_state(
-            buffer_len_for_scroll + LEN_TOP, self.block_size_top_scroll
+            self.buffer_len_for_scroll + LEN_TOP, self.block_size_top_scroll
         )
-        self.top_scroll_position = buffer_len_for_scroll  # Start by showing the 'end' part of the buffer, so first visible is start of 'real' content
-        total_steps = buffer_len_for_scroll  # One full scroll cycle (buffer length)
-        super().__init__(total_steps)
+        self.top_scroll_position = self.buffer_len_for_scroll
 
         colors = get_distinct_colors(2)
         self.base_color = colors[0]
@@ -376,17 +355,10 @@ class TopScrollAndQuartersAnimation(Animation):
         self.highlight_change_interval = 30  # Change highlighted quarter every 30 steps
 
     def get_initial_states(self):
-        # Create new scroll content each time for variety
-        buffer_len_for_scroll = (
-            (LEN_TOP + self.block_size_top_scroll - 1) // self.block_size_top_scroll
-        ) * self.block_size_top_scroll
         self.top_scroll_content = get_block_pattern_strand_state(
-            buffer_len_for_scroll + LEN_TOP, self.block_size_top_scroll
+            self.buffer_len_for_scroll + LEN_TOP, self.block_size_top_scroll
         )
-        self.top_scroll_position = buffer_len_for_scroll
-        self.total_steps = (
-            buffer_len_for_scroll  # Update total steps based on new buffer length
-        )
+        self.top_scroll_position = self.buffer_len_for_scroll
 
         current_top_state = self.top_scroll_content[
             self.top_scroll_position : self.top_scroll_position + LEN_TOP
@@ -410,35 +382,12 @@ class TopScrollAndQuartersAnimation(Animation):
             else:  # Bottom quarters
                 quarters.append([color] * LEN_SIDE_BOTTOM)
 
-        return (
-            (current_top_state, quarters[0], quarters[1], quarters[2], quarters[3]),
-            self.top_scroll_position,
-            self.total_steps,
-        )
+        return (current_top_state, quarters[0], quarters[1], quarters[2], quarters[3])
 
-    def make_step(self, strand_states):
-        # Animate top scroll (LEFT to RIGHT, content moves right, so window moves left)
+    def _child_make_step(self, strand_states):
         self.top_scroll_position -= 1
-        # The scroll content is like [BUFFER_FOR_RIGHT_APPEARANCE | ACTUAL_CONTENT_INITIALLY_VISIBLE]
-        # Example: LEN_TOP=3, scroll_content = [b1,b2,b3, d1,d2,d3]. initial pos=3. shows [d1,d2,d3]
-        # pos=2: shows [b3,d1,d2]. pos=1: shows [b2,b3,d1]. pos=0: shows [b1,b2,b3]
-        # When pos < 0, it should wrap around to show the end of the content again.
-        # To achieve smooth looping from left to right, the content needs to be conceptually circular.
-        # A simple way is to have content like [A,B,C,D,E] and if LEN_TOP is 3:
-        # show [A,B,C] (pos 0)
-        # show [E,A,B] (pos -1, wrapped to pos 4, showing content[4], content[0], content[1] - needs specific slicing)
-        # Or, simpler: top_scroll_content = get_block_pattern_strand_state(LEN_TOP, ...)
-        # and then new_top_state = rotate(previous_top_state, -1) (for L-to-R) and fill in new element at [0]
-
-        # Let's use the buffer approach: self.top_scroll_content = [buffer_for_new_elements | main_elements_to_loop]
-        # total length of top_scroll_content is `buffer_len_for_scroll + LEN_TOP`
-        # buffer_len_for_scroll is where "new" elements are taken from when scrolling right.
-        # if self.top_scroll_position < 0:
-        #    self.top_scroll_position = buffer_len_for_scroll -1 # This needs adjustment to make it loop correctly
 
         if self.top_scroll_position < 0:
-            # If we scrolled past the beginning of the buffer, regenerate and reset position
-            # This creates a continuous fresh stream of blocks from the right
             buffer_len_for_scroll = (
                 (LEN_TOP + self.block_size_top_scroll - 1) // self.block_size_top_scroll
             ) * self.block_size_top_scroll
@@ -446,21 +395,16 @@ class TopScrollAndQuartersAnimation(Animation):
                 buffer_len_for_scroll + LEN_TOP, self.block_size_top_scroll
             )
             self.top_scroll_position = buffer_len_for_scroll
-            self.total_steps = (
-                buffer_len_for_scroll  # Update total steps based on new buffer length
-            )
 
         new_top_state = self.top_scroll_content[
             self.top_scroll_position : self.top_scroll_position + LEN_TOP
         ]
 
-        # Animate quarters highlight
         self.steps_since_highlight_change += 1
         if self.steps_since_highlight_change >= self.highlight_change_interval:
             self.steps_since_highlight_change = 0
             self.highlighted_quarter_index = (self.highlighted_quarter_index + 1) % 4
-            # Optionally, change base and highlight colors when the cycle completes or at interval
-            if self.highlighted_quarter_index == 0:  # Cycle completed
+            if self.highlighted_quarter_index == 0:
                 new_cycle_colors = get_distinct_colors(2)
                 self.base_color = new_cycle_colors[0]
                 self.highlight_color = new_cycle_colors[1]
@@ -478,52 +422,40 @@ class TopScrollAndQuartersAnimation(Animation):
                 new_quarters.append([color] * LEN_SIDE_BOTTOM)
 
         return (
-            (
-                new_top_state,
-                new_quarters[0],
-                new_quarters[1],
-                new_quarters[2],
-                new_quarters[3],
-            ),
-            self.top_scroll_position,
-            self.total_steps,
+            new_top_state,
+            new_quarters[0],
+            new_quarters[1],
+            new_quarters[2],
+            new_quarters[3],
         )
 
 
 class BreathingQuartersAnimation(Animation):
-    def __init__(self):
+    def __init__(self, total_steps):
+        super().__init__(total_steps)
         self.cycles_for_color_change = 3  # Change colors every N breath cycles
-        self.current_cycle_count = 0
-        self._setup_colors_and_breath()
-
-    def _setup_colors_and_breath(self):
-        distinct_colors = get_distinct_colors(2)
-        self.quarter_base_color = distinct_colors[0]
-        self.top_bar_color = distinct_colors[1]
-
-        self.breath_step = 0.0
         self.breath_speed = 0.1  # Adjust for faster/slower breathing
         self.min_brightness_factor = 0.2
         self.max_brightness_factor = 1.0
-        self.breath_period_steps = (
-            2 * math.pi
-        ) / self.breath_speed  # Steps for one full sin wave cycle
-        total_steps = (
-            self.breath_period_steps * self.cycles_for_color_change
-        )  # Total steps for color change
-        super().__init__(total_steps)
+
+        self._reset_cycle_state()  # Initialize colors and breath step
+
+    def _reset_cycle_state(self):
+        """Resets colors, breath step, and cycle count for a new color cycle."""
+        distinct_colors = get_distinct_colors(2)
+        self.quarter_base_color = distinct_colors[0]
+        self.top_bar_color = distinct_colors[1]
+        self.breath_step = 0.0
+        self.current_cycle_count = 0
 
     def _apply_brightness(self, color, factor):
         r, g, b = color
-        # Ensure factor is clamped to avoid issues, though sin scaling should handle it
         factor = max(0.0, min(1.0, factor))
         return (int(r * factor), int(g * factor), int(b * factor))
 
     def get_initial_states(self):
-        self._setup_colors_and_breath()  # Reset colors and breath cycle
-        self.current_cycle_count = 0
+        self._reset_cycle_state()  # Reset colors and breath cycle for a fresh start
 
-        # Initial brightness (e.g., mid-point or min_brightness)
         initial_sin_val = math.sin(self.breath_step)
         brightness_factor = self.min_brightness_factor + ((initial_sin_val + 1) / 2) * (
             self.max_brightness_factor - self.min_brightness_factor
@@ -540,23 +472,18 @@ class BreathingQuartersAnimation(Animation):
         bottom_right_state = [current_quarter_color] * LEN_SIDE_BOTTOM
 
         return (
-            (
-                top_state,
-                top_left_state,
-                top_right_state,
-                bottom_left_state,
-                bottom_right_state,
-            ),
-            self.breath_step,
-            self.total_steps,
+            top_state,
+            top_left_state,
+            top_right_state,
+            bottom_left_state,
+            bottom_right_state,
         )
 
-    def make_step(self, strand_states):
+    def _child_make_step(self, strand_states):
         self.breath_step += self.breath_speed
 
-        # Scale sin output (-1 to 1) to (0 to 1), then to (min_factor to max_factor)
         sin_val = math.sin(self.breath_step)
-        normalized_sin = (sin_val + 1) / 2  # Scale to 0-1 range
+        normalized_sin = (sin_val + 1) / 2
         current_brightness_factor = self.min_brightness_factor + normalized_sin * (
             self.max_brightness_factor - self.min_brightness_factor
         )
@@ -565,27 +492,30 @@ class BreathingQuartersAnimation(Animation):
             self.quarter_base_color, current_brightness_factor
         )
 
-        new_top_state = [
-            self.top_bar_color
-        ] * LEN_TOP  # Top bar is static for this step
+        new_top_state = [self.top_bar_color] * LEN_TOP
         new_top_left_state = [breathing_quarter_color] * LEN_SIDE_TOP
         new_top_right_state = [breathing_quarter_color] * LEN_SIDE_TOP
         new_bottom_left_state = [breathing_quarter_color] * LEN_SIDE_BOTTOM
         new_bottom_right_state = [breathing_quarter_color] * LEN_SIDE_BOTTOM
 
-        # Check if a full breath cycle completed to count towards color change
-        if self.breath_step >= (self.current_cycle_count + 1) * (
-            2 * math.pi
-        ):  # Check based on angle not just step count relative to period
+        # Check if enough full breath cycles completed to trigger a color/state reset
+        # A full 2*pi cycle for self.breath_step means one breath cycle.
+        # current_cycle_count tracks how many such 2*pi cycles we've intended to complete for the color change.
+        if self.breath_step >= (self.current_cycle_count + 1) * (2 * math.pi):
             self.current_cycle_count += 1
             if self.current_cycle_count >= self.cycles_for_color_change:
-                self._setup_colors_and_breath()  # Reset colors and breath phase
-                self.current_cycle_count = 0
-                # Update the colors immediately for the current step return values
-                # Or it will take one more step with old color and new brightness phase
+                self._reset_cycle_state()  # Reset colors and breath phase for a new color cycle
+                # Update colors for the current step with the new state
+                # Start new cycle at min brightness (or initial brightness from _reset_cycle_state)
+                initial_sin_val_reset = math.sin(
+                    self.breath_step
+                )  # breath_step is now 0.0
+                brightness_factor_reset = self.min_brightness_factor + (
+                    (initial_sin_val_reset + 1) / 2
+                ) * (self.max_brightness_factor - self.min_brightness_factor)
                 breathing_quarter_color = self._apply_brightness(
-                    self.quarter_base_color, self.min_brightness_factor
-                )  # Start new cycle at min brightness
+                    self.quarter_base_color, brightness_factor_reset
+                )
                 new_top_left_state = [breathing_quarter_color] * LEN_SIDE_TOP
                 new_top_right_state = [breathing_quarter_color] * LEN_SIDE_TOP
                 new_bottom_left_state = [breathing_quarter_color] * LEN_SIDE_BOTTOM
@@ -593,15 +523,11 @@ class BreathingQuartersAnimation(Animation):
                 new_top_state = [self.top_bar_color] * LEN_TOP
 
         return (
-            (
-                new_top_state,
-                new_top_left_state,
-                new_top_right_state,
-                new_bottom_left_state,
-                new_bottom_right_state,
-            ),
-            self.breath_step,
-            self.total_steps,
+            new_top_state,
+            new_top_left_state,
+            new_top_right_state,
+            new_bottom_left_state,
+            new_bottom_right_state,
         )
 
 
@@ -629,33 +555,36 @@ def main():
     )
     physical_strand_top = neopixel.NeoPixel(machine.Pin(13, machine.Pin.OUT), LEN_TOP)
 
+    STEPS_PER_ANIMATION = 100
+
     animations = [
-        # WalkingNoiseAnimation(),
-        WaveAnimation(),
-        TopScrollAndQuartersAnimation(),
-        BreathingQuartersAnimation(),
+        WalkingNoiseAnimation(
+            STEPS_PER_ANIMATION
+        ),  # total_steps = 0, runs indefinitely until switched
+        WaveAnimation(STEPS_PER_ANIMATION),
+        TopScrollAndQuartersAnimation(STEPS_PER_ANIMATION),
+        BreathingQuartersAnimation(STEPS_PER_ANIMATION),
     ]
     current_animation_index = 0
     current_animation = animations[current_animation_index]
-    strand_states_tuple, current_step, total_steps = (
-        current_animation.get_initial_states()
-    )
+    strand_states_tuple = current_animation.get_initial_states()
+
+    steps_took_in_current_animation = 0
 
     while True:
-        # Check if animation cycle is complete
-        if current_step >= total_steps:
+        steps_took_in_current_animation += 1
+
+        # Time to change animation?
+        if steps_took_in_current_animation > STEPS_PER_ANIMATION:
+            # Initialize new animation
+            steps_took_in_current_animation = 0
             current_animation_index = (current_animation_index + 1) % len(animations)
             current_animation = animations[current_animation_index]
-            strand_states_tuple, current_step, total_steps = (
-                current_animation.get_initial_states()
-            )
-        else:
-            # Get next step from current animation
-            strand_states_tuple, current_step, total_steps = (
-                current_animation.make_step(strand_states_tuple)
-            )
+            strand_states_tuple = current_animation.get_initial_states()
 
-        # Apply the current state to the physical strands
+        # Make step
+        strand_states_tuple = current_animation.make_step(strand_states_tuple)
+
         apply_states_to_strands_from_tuple(
             strand_states_tuple,
             physical_strand_left,
