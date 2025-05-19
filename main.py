@@ -32,11 +32,6 @@ def generate_random_rgb_color(existing_colors=None):
 
 
 def get_distinct_colors(num_colors):
-    if not CURATED_COLORS:
-        return [(0, 0, 0)] * num_colors
-    if num_colors <= 0:
-        return []
-
     colors = list(CURATED_COLORS)
     random.shuffle(colors)
     result = colors[: min(num_colors, len(colors))]
