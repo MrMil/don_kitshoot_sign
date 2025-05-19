@@ -150,62 +150,6 @@ def get_strand_state_in_color(strand_state_length, color):
     return [color for _ in range(strand_state_length)]
 
 
-def add_noise(strand_state, noise_chance_per_led, change_per_rgb):
-    for i in range(len(strand_state)):
-        if random.random() < noise_chance_per_led:
-            strand_state[i] = (
-                strand_state[i][0] + random.randint(-change_per_rgb, change_per_rgb),
-                strand_state[i][1] + random.randint(-change_per_rgb, change_per_rgb),
-                strand_state[i][2] + random.randint(-change_per_rgb, change_per_rgb),
-            )
-    return strand_state
-
-
-NOICE_CHANCE_PER_LED = 0.1
-NOICE_CHANGE_PER_RGB = 10
-
-
-def get_noise_animation_initial_states():
-    colors = get_distinct_colors(5)  # Need 5 distinct colors
-    return StrandsStates(
-        top_state=add_noise(
-            get_strand_state_in_color(LEN_TOP, colors[0]),
-            NOICE_CHANCE_PER_LED,
-            NOICE_CHANGE_PER_RGB,
-        ),
-        top_left_state=add_noise(
-            get_strand_state_in_color(LEN_SIDE_TOP, colors[1]),
-            NOICE_CHANCE_PER_LED,
-            NOICE_CHANGE_PER_RGB,
-        ),
-        top_right_state=add_noise(
-            get_strand_state_in_color(LEN_SIDE_TOP, colors[2]),
-            NOICE_CHANCE_PER_LED,
-            NOICE_CHANGE_PER_RGB,
-        ),
-        bottom_left_state=add_noise(
-            get_strand_state_in_color(LEN_SIDE_BOTTOM, colors[3]),
-            NOICE_CHANCE_PER_LED,
-            NOICE_CHANGE_PER_RGB,
-        ),
-        bottom_right_state=add_noise(
-            get_strand_state_in_color(LEN_SIDE_BOTTOM, colors[4]),
-            NOICE_CHANCE_PER_LED,
-            NOICE_CHANGE_PER_RGB,
-        ),
-    )
-
-
-def get_noise_animation_step(strand_states):
-    return StrandsStates(
-        top_state=rotate(strand_states.top_state, 1),
-        top_left_state=rotate(strand_states.top_left_state, 1),
-        top_right_state=rotate(strand_states.top_right_state, 1),
-        bottom_left_state=rotate(strand_states.bottom_left_state, 1),
-        bottom_right_state=rotate(strand_states.bottom_right_state, 1),
-    )
-
-
 class Animation:
     def __init__(self, total_steps):
         self.total_steps = total_steps
@@ -232,17 +176,6 @@ class Animation:
         """
         # Child needs to implement this
         pass
-
-
-class WalkingNoiseAnimation(Animation):
-    def __init__(self, total_steps):
-        super().__init__(total_steps)
-
-    def get_initial_states(self):
-        return get_noise_animation_initial_states()
-
-    def _child_make_step(self, strand_states):
-        return get_noise_animation_step(strand_states)
 
 
 class WaveAnimation(Animation):
@@ -574,9 +507,6 @@ def main():
     STEPS_PER_ANIMATION = 100
 
     animations = [
-        WalkingNoiseAnimation(
-            STEPS_PER_ANIMATION
-        ),  # total_steps = 0, runs indefinitely until switched
         WaveAnimation(STEPS_PER_ANIMATION),
         TopScrollAndQuartersAnimation(STEPS_PER_ANIMATION),
         BreathingQuartersAnimation(STEPS_PER_ANIMATION),
