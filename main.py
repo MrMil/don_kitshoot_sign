@@ -304,7 +304,7 @@ class TopScrollAndQuartersAnimation(Animation):
         self.base_color = colors[0]
         self.highlight_color = colors[1]
 
-        self.highlighted_quarter_index = 0  # 0: TL, 1: TR, 2: BL, 3: BR
+        self.highlighted_quarter_index = 0
         self.steps_since_highlight_change = 0
         self.highlight_change_interval = 30  # Change highlighted quarter every 30 steps
 
@@ -340,8 +340,8 @@ class TopScrollAndQuartersAnimation(Animation):
             top_state=current_top_state,
             top_left_state=quarters[0],
             top_right_state=quarters[1],
-            bottom_left_state=quarters[2],
-            bottom_right_state=quarters[3],
+            bottom_left_state=quarters[3],
+            bottom_right_state=quarters[2],
         )
 
     def _child_make_step(self, strand_states):
