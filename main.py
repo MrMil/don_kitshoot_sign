@@ -27,30 +27,8 @@ CURATED_COLORS = [
 ]
 
 
-MAX_COLOR_GEN_ATTEMPTS = (
-    20  # Keep this for attempts to find a *distinct* color from the list
-)
-
-
 def generate_random_rgb_color(existing_colors=None):
-    """
-    Selects a random RGB color from CURATED_COLORS.
-    Tries to pick one not in existing_colors.
-    """
-    if existing_colors is None:
-        existing_colors = []
-
-    if not CURATED_COLORS:  # Should not happen if CURATED_COLORS is defined
-        return (0, 0, 0)  # Fallback black
-
-    available_colors = [c for c in CURATED_COLORS if c not in existing_colors]
-
-    if available_colors:
-        return random.choice(available_colors)
-    else:
-        # If all curated colors are already in existing_colors (e.g., asking for more distinct colors than available)
-        # or if existing_colors is just very full, just pick any from CURATED_COLORS.
-        return random.choice(CURATED_COLORS)
+    return random.choice(CURATED_COLORS)
 
 
 def get_distinct_colors(num_colors):
