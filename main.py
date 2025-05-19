@@ -385,8 +385,8 @@ class TopScrollAndQuartersAnimation(Animation):
             top_state=new_top_state,
             top_left_state=new_quarters[0],
             top_right_state=new_quarters[1],
-            bottom_left_state=new_quarters[2],
-            bottom_right_state=new_quarters[3],
+            bottom_left_state=new_quarters[3],
+            bottom_right_state=new_quarters[2],
         )
 
 
