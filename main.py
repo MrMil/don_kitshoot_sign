@@ -4,6 +4,8 @@ import random
 import time
 from machine import Pin
 import math
+from collections import namedtuple
+
 
 # New curated list of vibrant colors
 CURATED_COLORS = [
@@ -56,8 +58,16 @@ def get_distinct_colors(num_colors):
 # [L]                 [R]
 
 # We'll use a tuple to represent the state of all strands.
-# StrandsStatesTuple
-# (top_state, top_left_state, top_right_state, bottom_left_state, bottom_right_state)
+StrandsStates = namedtuple(
+    "StrandsStatesTuple",
+    [
+        "top_state",
+        "top_left_state",
+        "top_right_state",
+        "bottom_left_state",
+        "bottom_right_state",
+    ],
+)
 
 
 def rotate(strand_state, step):
@@ -157,28 +167,28 @@ NOICE_CHANGE_PER_RGB = 10
 
 def get_noise_animation_initial_states():
     colors = get_distinct_colors(5)  # Need 5 distinct colors
-    return (
-        add_noise(
+    return StrandsStates(
+        top_state=add_noise(
             get_strand_state_in_color(LEN_TOP, colors[0]),
             NOICE_CHANCE_PER_LED,
             NOICE_CHANGE_PER_RGB,
         ),
-        add_noise(
+        top_left_state=add_noise(
             get_strand_state_in_color(LEN_SIDE_TOP, colors[1]),
             NOICE_CHANCE_PER_LED,
             NOICE_CHANGE_PER_RGB,
         ),
-        add_noise(
+        top_right_state=add_noise(
             get_strand_state_in_color(LEN_SIDE_TOP, colors[2]),
             NOICE_CHANCE_PER_LED,
             NOICE_CHANGE_PER_RGB,
         ),
-        add_noise(
+        bottom_left_state=add_noise(
             get_strand_state_in_color(LEN_SIDE_BOTTOM, colors[3]),
             NOICE_CHANCE_PER_LED,
             NOICE_CHANGE_PER_RGB,
         ),
-        add_noise(
+        bottom_right_state=add_noise(
             get_strand_state_in_color(LEN_SIDE_BOTTOM, colors[4]),
             NOICE_CHANCE_PER_LED,
             NOICE_CHANGE_PER_RGB,
@@ -187,12 +197,12 @@ def get_noise_animation_initial_states():
 
 
 def get_noise_animation_step(strand_states):
-    return (
-        rotate(strand_states[0], 1),
-        rotate(strand_states[1], 1),
-        rotate(strand_states[2], 1),
-        rotate(strand_states[3], 1),
-        rotate(strand_states[4], 1),
+    return StrandsStates(
+        top_state=rotate(strand_states.top_state, 1),
+        top_left_state=rotate(strand_states.top_left_state, 1),
+        top_right_state=rotate(strand_states.top_right_state, 1),
+        bottom_left_state=rotate(strand_states.bottom_left_state, 1),
+        bottom_right_state=rotate(strand_states.bottom_right_state, 1),
     )
 
 
@@ -203,7 +213,7 @@ class Animation:
 
     def get_initial_states(self):
         """
-        Child class should implement this to return the initial StrandsStatesTuple.
+        Child class should implement this to return the initial StrandsStates instance.
         """
         # Child needs to implement this
         pass
@@ -267,12 +277,12 @@ class WaveAnimation(Animation):
                 top_right_state[current_pos_in_wave] = self.wave_color
             # N.B. Wave won't reach bottom_side initially if wave_width <= LEN_SIDE_TOP
 
-        return (
-            top_state,
-            top_left_state,
-            top_right_state,
-            bottom_left_state,
-            bottom_right_state,
+        return StrandsStates(
+            top_state=top_state,
+            top_left_state=top_left_state,
+            top_right_state=top_right_state,
+            bottom_left_state=bottom_left_state,
+            bottom_right_state=bottom_right_state,
         )
 
     def _child_make_step(self, strand_states):
@@ -323,12 +333,12 @@ class WaveAnimation(Animation):
                     new_bottom_left_state[actual_pos_in_bottom_side] = self.wave_color
                     new_bottom_right_state[actual_pos_in_bottom_side] = self.wave_color
 
-        return (
-            new_top_state,
-            new_top_left_state,
-            new_top_right_state,
-            new_bottom_left_state,
-            new_bottom_right_state,
+        return StrandsStates(
+            top_state=new_top_state,
+            top_left_state=new_top_left_state,
+            top_right_state=new_top_right_state,
+            bottom_left_state=new_bottom_left_state,
+            bottom_right_state=new_bottom_right_state,
         )
 
 
@@ -382,7 +392,13 @@ class TopScrollAndQuartersAnimation(Animation):
             else:  # Bottom quarters
                 quarters.append([color] * LEN_SIDE_BOTTOM)
 
-        return (current_top_state, quarters[0], quarters[1], quarters[2], quarters[3])
+        return StrandsStates(
+            top_state=current_top_state,
+            top_left_state=quarters[0],
+            top_right_state=quarters[1],
+            bottom_left_state=quarters[2],
+            bottom_right_state=quarters[3],
+        )
 
     def _child_make_step(self, strand_states):
         self.top_scroll_position -= 1
@@ -421,12 +437,12 @@ class TopScrollAndQuartersAnimation(Animation):
             else:  # Bottom quarters (BL, BR)
                 new_quarters.append([color] * LEN_SIDE_BOTTOM)
 
-        return (
-            new_top_state,
-            new_quarters[0],
-            new_quarters[1],
-            new_quarters[2],
-            new_quarters[3],
+        return StrandsStates(
+            top_state=new_top_state,
+            top_left_state=new_quarters[0],
+            top_right_state=new_quarters[1],
+            bottom_left_state=new_quarters[2],
+            bottom_right_state=new_quarters[3],
         )
 
 
@@ -471,12 +487,12 @@ class BreathingQuartersAnimation(Animation):
         bottom_left_state = [current_quarter_color] * LEN_SIDE_BOTTOM
         bottom_right_state = [current_quarter_color] * LEN_SIDE_BOTTOM
 
-        return (
-            top_state,
-            top_left_state,
-            top_right_state,
-            bottom_left_state,
-            bottom_right_state,
+        return StrandsStates(
+            top_state=top_state,
+            top_left_state=top_left_state,
+            top_right_state=top_right_state,
+            bottom_left_state=bottom_left_state,
+            bottom_right_state=bottom_right_state,
         )
 
     def _child_make_step(self, strand_states):
@@ -522,12 +538,12 @@ class BreathingQuartersAnimation(Animation):
                 new_bottom_right_state = [breathing_quarter_color] * LEN_SIDE_BOTTOM
                 new_top_state = [self.top_bar_color] * LEN_TOP
 
-        return (
-            new_top_state,
-            new_top_left_state,
-            new_top_right_state,
-            new_bottom_left_state,
-            new_bottom_right_state,
+        return StrandsStates(
+            top_state=new_top_state,
+            top_left_state=new_top_left_state,
+            top_right_state=new_top_right_state,
+            bottom_left_state=new_bottom_left_state,
+            bottom_right_state=new_bottom_right_state,
         )
 
 
@@ -567,7 +583,7 @@ def main():
     ]
     current_animation_index = 0
     current_animation = animations[current_animation_index]
-    strand_states_tuple = current_animation.get_initial_states()
+    current_strand_states = current_animation.get_initial_states()
 
     steps_took_in_current_animation = 0
 
@@ -580,13 +596,13 @@ def main():
             steps_took_in_current_animation = 0
             current_animation_index = (current_animation_index + 1) % len(animations)
             current_animation = animations[current_animation_index]
-            strand_states_tuple = current_animation.get_initial_states()
+            current_strand_states = current_animation.get_initial_states()
 
         # Make step
-        strand_states_tuple = current_animation.make_step(strand_states_tuple)
+        current_strand_states = current_animation.make_step(current_strand_states)
 
         apply_states_to_strands_from_tuple(
-            strand_states_tuple,
+            current_strand_states,
             physical_strand_left,
             physical_strand_right,
             physical_strand_top,
