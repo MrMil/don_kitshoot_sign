@@ -68,7 +68,7 @@ class BaseSweepAnimation(Animation):
             steps: The number of steps in the animation
             initial_color: The initial color of the animation
         """
-        super().__init__(total_steps=steps)
+        super().__init__()
         self.steps = steps
         self.from_color = initial_color
         self.to_color = get_different_random_color(initial_color)
@@ -217,7 +217,7 @@ class QuarterSpiralAnimation(Animation):
             initial_delay: Initial delay between quarters (in steps)
             acceleration_factor: How much to reduce delay each quarter (0.0 to 1.0)
         """
-        super().__init__(total_steps=1000)  # Large number since we'll control our own completion
+        super().__init__()  # Large number since we'll control our own completion
         self.left_strand = left_strand
         self.right_strand = right_strand
         self.initial_delay = initial_delay  # Set initial_delay first
