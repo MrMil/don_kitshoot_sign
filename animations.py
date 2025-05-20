@@ -50,24 +50,15 @@ def get_different_random_color(current_color):
     return random.choice(available_colors)
 
 class Animation:
-    def __init__(self, total_steps):
-        self.total_steps = total_steps
-        self.steps_already_made = 0
+    def __init__(self):
+        pass
 
     def make_step(self):
         """
         Advances the animation by one step.
         Returns True if animation is complete, False otherwise.
         """
-        self.steps_already_made += 1
-        return self._child_make_step()
-
-    def _child_make_step(self):
-        """
-        Child class should implement this to return True if animation is complete, False otherwise.
-        """
-        # Child needs to implement this
-        pass
+        raise NotImplementedError("Subclasses must implement this method")
 
 class BaseSweepAnimation(Animation):
     def __init__(self, steps, initial_color):
@@ -126,7 +117,7 @@ class ColorSweep(BaseSweepAnimation):
         self.step_size = self.led_count / self.steps
         self.strand.fill(self.from_color)
 
-    def _child_make_step(self):
+    def make_step(self):
         # Calculate the exact position based on step
         exact_position = self.position * self.step_size
         
@@ -182,7 +173,7 @@ class DualColorSweep(BaseSweepAnimation):
         self.strand1.fill(self.from_color)
         self.strand2.fill(self.from_color)
 
-    def _child_make_step(self):
+    def make_step(self):
         # Calculate the exact position based on step
         exact_position = self.position * self.step_size
         
@@ -268,7 +259,7 @@ class QuarterSpiralAnimation(Animation):
         else:  # SW (left bottom)
             return (self.quarter_lengths[0], self.quarter_lengths[0] + self.quarter_lengths[3])  # Start after NW quarter
 
-    def _child_make_step(self):
+    def make_step(self):
         # Normal animation
         self.current_step += 1
         
